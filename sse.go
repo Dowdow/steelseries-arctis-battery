@@ -20,14 +20,14 @@ const (
 	EVENT_NAME        = "BATTERY_UPDATE"
 )
 
+type Game struct {
+	Game string `json:"game"`
+}
+
 type GameRegister struct {
 	Game            string `json:"game"`
 	GameDisplayName string `json:"game_display_name"`
 	Developer       string `json:"developer,omitempty"`
-}
-
-type GameUnregister struct {
-	Game string `json:"game"`
 }
 
 type EventRegister struct {
@@ -168,7 +168,7 @@ func registerGame() error {
 }
 
 func unregisterGame() error {
-	return request("remove_game", GameUnregister{
+	return request("remove_game", Game{
 		Game: GAME_NAME,
 	})
 }
@@ -229,5 +229,11 @@ func sendEvent(percent int) error {
 			},
 			Value: percent,
 		},
+	})
+}
+
+func sendHeartbeat() error {
+	return request("game_heartbeat", Game{
+		Game: GAME_NAME,
 	})
 }
