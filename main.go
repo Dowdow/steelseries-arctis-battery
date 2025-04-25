@@ -1,12 +1,24 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"context"
+	"sync"
 
 	"fyne.io/systray"
+	"github.com/Dowdow/steelseries-arctis-battery/headset"
 	"github.com/Dowdow/steelseries-arctis-battery/icon"
+	"github.com/Dowdow/steelseries-arctis-battery/sse"
 )
+
+var (
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+)
+
+func main() {
+	systray.Run(onReady, onExit)
+}
 
 func onReady() {
 	systray.SetTitle("Steelseries Arctis Battery")
@@ -37,39 +49,18 @@ func onReady() {
 		}
 	}()
 
-	// On essaye de voir si un casque compatible est disponible
+	ctx, cancel = context.WithCancel(context.Background())
 
-	err := registerGame()
-	if err != nil {
-		fmt.Printf("error while registering game: %v", err)
-		return
-	}
+	wg.Add(1)
+	go sse.Listen(ctx, &wg)
 
-	err = registerEvent()
-	if err != nil {
-		fmt.Printf("error while registering event: %v", err)
-		return
-	}
-
-	err = bindEvent()
-	if err != nil {
-		fmt.Printf("error while binding event: %v", err)
-		return
-	}
-
-	for {
-		battery, _ := getBatteryLevel()
-		sendEvent(battery)
-		time.Sleep(10 * time.Second)
-	}
-
-	// unregisterEvent()
+	wg.Add(1)
+	go headset.Listen(ctx, &wg)
 }
 
 func onExit() {
-
-}
-
-func main() {
-	systray.Run(onReady, onExit)
+	if cancel != nil {
+		cancel()
+	}
+	wg.Wait()
 }
