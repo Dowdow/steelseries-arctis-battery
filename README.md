@@ -6,11 +6,9 @@ It uses `setupapi.dll` to scan devices and `hid.dll` to retrieve battery informa
 
 The app is visible and manageable from the system tray, using the [fyne-io/systray](https://github.com/fyne-io/systray) library.
 
-![Scanning example](https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/scanning.jpg?raw=true)
-![Progress example](https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/progress.jpg?raw=true)
-![Systray example](https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray.png?raw=true)
-![Systray click example](https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray-click.png?raw=true)
-![SteelseriesGG example](https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/sse.png?raw=true)
+|Scanning|Progress|Systray|Systray Click|SteelseriesGG|
+|--------|--------|-------|-------------|-------------|
+|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/scanning.jpg?raw=true" alt="Scanning example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/progress.jpg?raw=true" alt="Progress example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray.png?raw=true" alt="Systray example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray-click.png?raw=true" alt="Systray click example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/sse.png?raw=true" alt="SteelseriesGG example" height="200" />|
 
 ## Support
 
