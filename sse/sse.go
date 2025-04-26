@@ -74,7 +74,12 @@ type BatteryData struct {
 }
 
 type FrameData struct {
-	Percent string `json:"percent"`
+	Text string `json:"text"`
+}
+
+type SSEBatteryMessage struct {
+	Text  string
+	Value int
 }
 
 func RegisterGame() error {
@@ -129,8 +134,7 @@ func BindEvent() error {
 						Lines: []LineData{
 							{
 								HasText:         true,
-								Prefix:          "Arctis 7 - ",
-								ContextFrameKey: "percent",
+								ContextFrameKey: "text",
 							},
 							{
 								HasProgressBar: true,
@@ -143,20 +147,20 @@ func BindEvent() error {
 	})
 }
 
-func SendEvent(percent int) error {
+func SendEvent(text string, percent int) error {
 	return request("game_event", EventBatteryUpdate{
 		Game:  GAME_NAME,
 		Event: EVENT_NAME,
 		Data: BatteryData{
 			Frame: FrameData{
-				Percent: fmt.Sprintf("%d%%", percent),
+				Text: text,
 			},
 			Value: percent,
 		},
 	})
 }
 
-func Listen(ctx context.Context, wg *sync.WaitGroup) {
+func Listen(ctx context.Context, wg *sync.WaitGroup, batteryMessageChannel chan SSEBatteryMessage) {
 	defer wg.Done()
 
 	err := RegisterGame()
@@ -178,21 +182,45 @@ func Listen(ctx context.Context, wg *sync.WaitGroup) {
 	}
 
 	// Keepalive
+	wg.Add(1)
 	go func() {
-		ticker := time.NewTicker(15 * time.Second)
+		defer wg.Done()
+
+		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			err := SendHeartbeat()
-			if err != nil {
-				// Que faire ici ?
+		for {
+			select {
+			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				err := SendHeartbeat()
+				if err != nil {
+					fmt.Printf("error while sending hearbeat: %v", err)
+					// Que faire ici ?
+					return
+				}
 			}
 		}
 	}()
 
 	// Routine pour écouter la reception d'un message de channel pour mettre à jour la battery avec l'event
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case message := <-batteryMessageChannel:
+				err := SendEvent(message.Text, message.Value)
+				if err != nil {
+					fmt.Printf("error while sending battery event: %v", err)
+					// Que faire ici ?
+					return
+				}
+			}
+		}
+	}()
 }
