@@ -197,14 +197,13 @@ func Listen(ctx context.Context, wg *sync.WaitGroup, batteryMessageChannel chan 
 				err := SendHeartbeat()
 				if err != nil {
 					fmt.Printf("error while sending hearbeat: %v", err)
-					// Que faire ici ?
 					return
 				}
 			}
 		}
 	}()
 
-	// Routine pour écouter la reception d'un message de channel pour mettre à jour la battery avec l'event
+	// Listen updates from the channel and send battery events
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -217,7 +216,6 @@ func Listen(ctx context.Context, wg *sync.WaitGroup, batteryMessageChannel chan 
 				err := SendEvent(message.Text, message.Value)
 				if err != nil {
 					fmt.Printf("error while sending battery event: %v", err)
-					// Que faire ici ?
 					return
 				}
 			}
