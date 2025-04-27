@@ -19,3 +19,17 @@ The app currently only supports the [Arctis 7 (2019)](https://steelseries.com/ga
 For now, the app is only built for Windows. I can't test on macOS, even though the SteelSeriesGG app is available there. You’re welcome to open a pull request for that, as long as it doesn't break Windows compatibility.
 
 If you have any questions, feel free to open an issue.
+
+## Development
+
+To build the app locally on Windows, you can use the `build.bat` file.  
+It requires the `rsrc` package to assign an icon to the `.exe` file:
+
+```bash
+git clone https://github.com/Dowdow/steelseries-arctis-battery.git
+go mod download
+go install github.com/akavel/rsrc@latest
+.\build.bat
+```
+
+It will create a `dist\build.exe` file that you can immediately run.

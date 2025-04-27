@@ -105,7 +105,7 @@ func start() {
 					}
 
 					sseBatteryMessageChannel <- sse.SSEBatteryMessage{
-						Text:  fmt.Sprintf("%s - %d%%", message.Name, message.Level),
+						Text:  fmt.Sprintf("%-11.11s %d%%", message.Name, message.Level),
 						Value: message.Level,
 					}
 				}
