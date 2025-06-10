@@ -34,8 +34,8 @@ func main() {
 }
 
 func onReady() {
-	systray.SetTitle("Steelseries Arctis Battery")
-	systray.SetTooltip("Steelseries Arctis Battery")
+	systray.SetTitle("SteelSeries Arctis Battery")
+	systray.SetTooltip("SteelSeries Arctis Battery")
 	systray.SetIcon(icon.Icon)
 
 	mQuit := systray.AddMenuItem("Quit", "Quit")

@@ -1,6 +1,6 @@
-# Steelseries Arctis Battery
+# SteelSeries Arctis Battery
 
-This is a simple Go application that allows you to view the battery level of your Steelseries Arctis gaming headset on your Steelseries keyboard with a screen.
+This is a simple Go application that allows you to view the battery level of your SteelSeries Arctis gaming headset on your SteelSeries keyboard with a screen.
 
 It uses `setupapi.dll` to scan devices and `hid.dll` to retrieve battery information from the headset. This data is then sent to the SteelSeriesGG app through the [SteelSeries GameSense™ SDK](https://github.com/SteelSeries/gamesense-sdk).
 
@@ -8,9 +8,9 @@ The app is visible and manageable from the system tray, using the [fyne-io/systr
 
 ## Screenshots
 
-|Scanning|Progress|Systray|Systray Click|SteelseriesGG|
+|Scanning|Progress|Systray|Systray Click|SteelSeriesGG|
 |--------|--------|-------|-------------|-------------|
-|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/scanning.jpg?raw=true" alt="Scanning example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/progress.jpg?raw=true" alt="Progress example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray.png?raw=true" alt="Systray example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray-click.png?raw=true" alt="Systray click example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/sse.png?raw=true" alt="SteelseriesGG example" height="200" />|
+|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/scanning.jpg?raw=true" alt="Scanning example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/progress.jpg?raw=true" alt="Progress example" height="150" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray.png?raw=true" alt="Systray example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/tray-click.png?raw=true" alt="Systray click example" />|<img src="https://github.com/Dowdow/steelseries-arctis-battery/blob/main/screenshots/sse.png?raw=true" alt="SteelSeriesGG example" height="200" />|
 
 ## Support
 
