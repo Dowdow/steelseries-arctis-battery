@@ -5,22 +5,49 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"fyne.io/systray"
-	"github.com/Dowdow/steelseries-arctis-battery/headset"
-	"github.com/Dowdow/steelseries-arctis-battery/icon"
-	"github.com/Dowdow/steelseries-arctis-battery/sse"
+	"github.com/Dowdow/steelseries-arctis-battery/internal/display"
+	"github.com/Dowdow/steelseries-arctis-battery/internal/headset"
+	"github.com/Dowdow/steelseries-arctis-battery/internal/icon"
+	"github.com/Dowdow/steelseries-arctis-battery/internal/oled"
+	"github.com/Dowdow/steelseries-arctis-battery/internal/sse"
 )
 
 var (
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	// pipelineMu guards ctx/cancel: start()/stop() write them from the
+	// Start/Stop menu handler and the systray exit callback, toggle() reads
+	// them from the checkbox handlers — all different goroutines.
+	pipelineMu sync.Mutex
+	ctx        context.Context
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
+
+	headsetChannel = make(chan display.Message)
+
+	// Output backends, each behind its own channel and enabled flag. The
+	// channels live for the whole process so a toggle can reach a backend's
+	// goroutine (e.g. to clear its screen) whether or not it's currently the
+	// one being (re)started by the Start/Stop menu item.
+	sseSink  = &backendSink{display: sse.New(), channel: make(chan display.Message)}
+	oledSink = &backendSink{display: oled.New(), channel: make(chan display.Message)}
+	sinks    = []*backendSink{sseSink, oledSink}
 )
 
+type backendSink struct {
+	display display.Display
+	enabled atomic.Bool
+	channel chan display.Message
+}
+
 func main() {
+	sseSink.enabled.Store(runtime.GOOS == "windows" || runtime.GOOS == "darwin")
+	oledSink.enabled.Store(runtime.GOOS == "linux")
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -36,7 +63,7 @@ func main() {
 func onReady() {
 	systray.SetTitle("SteelSeries Arctis Battery")
 	systray.SetTooltip("SteelSeries Arctis Battery")
-	systray.SetIcon(icon.Icon)
+	systray.SetIcon(icon.Default)
 
 	mQuit := systray.AddMenuItem("Quit", "Quit")
 	go func() {
@@ -48,75 +75,126 @@ func onReady() {
 	systray.AddSeparator()
 
 	started := true
-	mToggleStartStop := systray.AddMenuItem("Stop", "Stop the process")
+	mToggleStartStop := systray.AddMenuItem("Stop listening", "Stop the listening process")
 	go func() {
 		for range mToggleStartStop.ClickedCh {
 			if started {
 				stop()
-				mToggleStartStop.SetTitle("Start")
-				mToggleStartStop.SetTooltip("Start the process")
-				systray.SetIcon(icon.Icon)
+				mToggleStartStop.SetTitle("Start listening")
+				mToggleStartStop.SetTooltip("Start the listening process")
+				systray.SetIcon(icon.Default)
 			} else {
 				start()
-				mToggleStartStop.SetTitle("Stop")
-				mToggleStartStop.SetTooltip("Stop the process")
+				mToggleStartStop.SetTitle("Stop listening")
+				mToggleStartStop.SetTooltip("Stop the listening process")
 			}
 			started = !started
+		}
+	}()
+
+	systray.AddSeparator()
+
+	mSSE := systray.AddMenuItemCheckbox("Screen via GameSense", "Send battery level to SteelSeriesGG", sseSink.enabled.Load())
+	go func() {
+		for range mSSE.ClickedCh {
+			toggle(sseSink, mSSE)
+		}
+	}()
+
+	mOLED := systray.AddMenuItemCheckbox("Screen via direct HID", "Draw directly on the keyboard OLED screen", oledSink.enabled.Load())
+	go func() {
+		for range mOLED.ClickedCh {
+			toggle(oledSink, mOLED)
 		}
 	}()
 
 	start()
 }
 
+func toggle(sink *backendSink, item *systray.MenuItem) {
+	if sink.enabled.Load() {
+		sink.enabled.Store(false)
+		item.Uncheck()
+
+		// Best-effort: if the pipeline isn't running, there's nothing to
+		// clear, the backend already did so on its own shutdown
+		pipelineMu.Lock()
+		runningCtx := ctx
+		pipelineMu.Unlock()
+
+		if runningCtx != nil {
+			display.Send(runningCtx, sink.channel, display.Message{Off: true})
+		}
+	} else {
+		sink.enabled.Store(true)
+		item.Check()
+	}
+}
+
 func start() {
+	pipelineMu.Lock()
 	ctx, cancel = context.WithCancel(context.Background())
+	runningCtx := ctx
+	pipelineMu.Unlock()
 
-	sseBatteryMessageChannel := make(chan sse.SSEBatteryMessage)
-	headsetBatteryMessageChannel := make(chan headset.HeadsetBatteryMessage)
-
-	wg.Add(1)
-	go sse.Listen(ctx, &wg, sseBatteryMessageChannel)
-
-	wg.Add(1)
-	go headset.Listen(ctx, &wg, headsetBatteryMessageChannel)
+	for _, sink := range sinks {
+		wg.Add(1)
+		go sink.display.Listen(runningCtx, &wg, sink.channel)
+	}
 
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	go headset.Listen(runningCtx, &wg, headsetChannel)
 
+	wg.Go(func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-runningCtx.Done():
 				return
-			case message := <-headsetBatteryMessageChannel:
-				if message.Scanning {
-					systray.SetIcon(icon.Icon)
-					sseBatteryMessageChannel <- sse.SSEBatteryMessage{
-						Text:  "Scanning...",
-						Value: 0,
-					}
-				} else {
-					if message.Level >= 50 {
-						systray.SetIcon(icon.IconGreen)
-					} else if message.Level >= 20 {
-						systray.SetIcon(icon.IconOrange)
-					} else {
-						systray.SetIcon(icon.IconRed)
-					}
+			case message := <-headsetChannel:
+				updateTrayIcon(message)
+				updateTrayTooltip(message)
 
-					sseBatteryMessageChannel <- sse.SSEBatteryMessage{
-						Text:  fmt.Sprintf("%-11.11s %d%%", message.Name, message.Level),
-						Value: message.Level,
+				for _, sink := range sinks {
+					if !sink.enabled.Load() {
+						continue
+					}
+					if !display.Send(runningCtx, sink.channel, message) {
+						return
 					}
 				}
 			}
 		}
-	}()
+	})
+}
+
+func updateTrayIcon(message display.Message) {
+	if message.Scanning {
+		systray.SetIcon(icon.Default)
+		return
+	}
+	systray.SetIcon(icon.Render(message.Level, message.Charging))
+}
+
+func updateTrayTooltip(message display.Message) {
+	if message.Scanning {
+		systray.SetTooltip("SteelSeries Arctis Battery — scanning...")
+		return
+	}
+
+	tooltip := fmt.Sprintf("%s — %d%%", message.Name, message.Level)
+	if message.Charging {
+		tooltip += " (charging)"
+	}
+	systray.SetTooltip(tooltip)
 }
 
 func stop() {
-	if cancel != nil {
-		cancel()
+	pipelineMu.Lock()
+	stopFunc := cancel
+	pipelineMu.Unlock()
+
+	if stopFunc != nil {
+		stopFunc()
 	}
 	wg.Wait()
 }

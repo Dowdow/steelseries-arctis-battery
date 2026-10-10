@@ -11,7 +11,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo Generating icon resource...
 
-rsrc -ico icon\icon.ico -o rsrc.syso
+rsrc -ico internal\icon\icon.ico -o rsrc.syso
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Failed to generate icon resource.
     exit /b 1
@@ -20,7 +20,7 @@ if %ERRORLEVEL% neq 0 (
 echo Building application...
 set GOARCH=amd64
 set GOOS=windows
-set CGO_ENABLED=1
+set CGO_ENABLED=0
 
 go build -ldflags="-H windowsgui" -o dist\build.exe
 if %ERRORLEVEL% neq 0 (

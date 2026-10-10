@@ -3,6 +3,7 @@ package sse
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,12 @@ import (
 	"sync"
 	"time"
 )
+
+// ErrUnsupportedOS is returned when the SteelSeries GG app (and therefore the
+// GameSense server) does not exist on the current platform.
+var ErrUnsupportedOS = errors.New("GameSense is not available on this OS")
+
+var httpClient = &http.Client{Timeout: 5 * time.Second}
 
 // Server address caching
 var (
@@ -38,7 +45,7 @@ func getServerAddress() (string, error) {
 	case "darwin":
 		corePropsPath = "/Library/Application Support/SteelSeries Engine 3/coreProps.json"
 	default:
-		return "", fmt.Errorf("OS is not supported: %s", runtime.GOOS)
+		return "", fmt.Errorf("%w: %s", ErrUnsupportedOS, runtime.GOOS)
 	}
 
 	data, err := os.ReadFile(corePropsPath)
@@ -75,7 +82,7 @@ func request(endpoint string, payload any) error {
 		return fmt.Errorf("error while marshalling JSON: %v", err)
 	}
 
-	response, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	response, err := httpClient.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("error while sending request: %v", err)
 	}

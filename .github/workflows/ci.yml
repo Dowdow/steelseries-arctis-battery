@@ -1,0 +1,40 @@
+name: "CI"
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+jobs:
+  check:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v4"
+
+      - name: "Set up Go"
+        uses: "actions/setup-go@v5"
+        with:
+          go-version: "stable"
+          cache: true
+
+      - name: "Download dependencies"
+        run: go mod download
+
+      - name: "Check formatting"
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: "Test"
+        run: go test ./...
+
+      - name: "Vet (Linux)"
+        run: go vet ./...
+
+      - name: "Vet (Windows)"
+        run: GOOS=windows go vet ./...
+
+      - name: "Build (Linux)"
+        run: CGO_ENABLED=0 GOOS=linux go build ./...
+
+      - name: "Build (Windows)"
+        run: CGO_ENABLED=0 GOOS=windows go build ./...
